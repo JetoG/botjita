@@ -6,7 +6,7 @@ from func_repetiveis import *
 # Configuraçãoes e Importação JSON dos Canais.
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='%', intents=intents)
-token = 'MTEwNzgxODA5ODkwMTQwMTYwMA.GN_7iP.QDogER0eQTizhX7nNWrafzfkdykT03fhkwJnb4'
+token = 'MTEwNzgxODA5ODkwMTQwMTYwMA.GPLWrG.VdPBfjPXt2KcOX_RQvaOh7zgrrkZuoT8ZKkFYU'
 
 
 # Dicionário para armazenar os canais de contagem (ID do servidor e ID do canal)
