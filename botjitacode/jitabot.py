@@ -12,7 +12,7 @@ from func_repetiveis import *
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='%', intents=intents)
 token = config.get('token')
-
+#Funciona
 
 # Dicionário para armazenar os canais de contagem (ID do servidor e ID do canal)
 member_count_channels = {}
