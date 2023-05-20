@@ -1,12 +1,17 @@
 import discord
 import asyncio
+from decouple import Config
+
+# Configurar o caminho para o arquivo .env
+config = Config('.env')
+
 from discord.ext import commands
 from func_utils import *
 from func_repetiveis import *
 # Configuraçãoes e Importação JSON dos Canais.
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='%', intents=intents)
-token = 'MTEwNzgxODA5ODkwMTQwMTYwMA.GPLWrG.VdPBfjPXt2KcOX_RQvaOh7zgrrkZuoT8ZKkFYU'
+token = config.get('token')
 
 
 # Dicionário para armazenar os canais de contagem (ID do servidor e ID do canal)
