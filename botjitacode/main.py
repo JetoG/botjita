@@ -357,7 +357,7 @@ async def help(ctx):
 @commands.has_permissions(administrator=True)
 async def criarcanal(ctx):
     guild = ctx.guild
-    channel = await create_trade_notifications_channel(guild)
+    channel = await create_trade_notifications_channel(guild, bot)
 
     if channel:
         await ctx.send(f"O canal de notificações de trocas foi criado com sucesso: {channel.mention}")

@@ -93,6 +93,8 @@ async def load_trade_notification_channels():
     except FileNotFoundError:
         trade_notification_channels = {}
 
+    return trade_notification_channels
+
 
 # Função JSON que salva o canal de troca no arquivo.
 async def save_trade_notification_channels():
@@ -105,7 +107,7 @@ async def save_trade_notification_channels():
 # Função para criar o canal de notificações de trocas
 async def create_trade_notifications_channel(guild, bot):
     # Verifica se o canal já existe nas configurações
-    settings = load_trade_notification_channels()
+    settings = await load_trade_notification_channels()
     channel_id = settings.get('trade_notifications_channel_id')
 
     if channel_id:
@@ -131,7 +133,7 @@ async def create_trade_notifications_channel(guild, bot):
                     if str(reaction.emoji) == '✅':
                         del settings['trade_notifications_channel_id']
                         del settings['trade_notifications_channel_owner_id']
-                        save_trade_notification_channels(settings)
+                        await save_trade_notification_channels()
                         return await create_trade_notifications_channel(guild, bot)
                     else:
                         await owner.send("Entendido. Se precisar criar o canal novamente, utilize o comando %criarcanal.")
@@ -158,7 +160,7 @@ async def create_trade_notifications_channel(guild, bot):
                 channel = await category.create_text_channel('trocas-notificacoes')
                 settings['trade_notifications_channel_id'] = channel.id
                 settings['trade_notifications_channel_owner_id'] = owner.id
-                save_trade_notification_channels(settings)
+                await save_trade_notification_channels()
                 return channel
             else:
                 await owner.send("Entendido. Caso deseje criar o canal posteriormente, utilize o comando %criarcanal.")
@@ -168,4 +170,3 @@ async def create_trade_notifications_channel(guild, bot):
             return None
 
     return None
-
