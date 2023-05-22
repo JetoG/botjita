@@ -1,14 +1,15 @@
 import discord
 import asyncio
 
+
 from discord.ext import commands
-from func_utils import load_member_count_channels, get_member_count_channel, update_member_count, create_trade_notifications_channel
-from func_repetiveis import verifica_canal_membros
+from func_utils import load_member_count_channels, get_member_count_channel, update_member_count, get_trade_notifications_channel
+from func_repetiveis import verifica_canal_membros_on_ready, verifica_canal_membros, verifica_canal_trade_on_ready, verifica_canal_trade
 
 # Configuraçãoes e Importação JSON dos Canais.
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='%', intents=intents)
-token = ''
+token = 'MTEwNzgxODA5ODkwMTQwMTYwMA.GMqEng.8bRhhuFB2wvqBXIMXp3ZBD06v1sebfmYD_04WY'
 
 
 # Dicionário para armazenar os canais de contagem (ID do servidor e ID do canal)
@@ -22,16 +23,19 @@ trade_notification_channels = {}
 async def on_ready():
     await load_member_count_channels()
     for guild in bot.guilds:
-        await verifica_canal_membros(guild)
+        await verifica_canal_membros_on_ready(guild)
+        await verifica_canal_trade_on_ready(guild)
 
     await bot.change_presence(activity=discord.Game("%help"))
     print(f"Bot {bot.user} está pronto!")
+    print(discord.__version__)
 
 
 # Função de criar um canal de membros quando o BOT entrar em um servidor.
 @bot.event
 async def on_guild_join(guild):
     await verifica_canal_membros(guild)
+    await verifica_canal_trade(guild)
     print(f'Bot {bot.user} entrou no servidor: {guild.name} (ID: {guild.id})')
 
 
@@ -83,6 +87,15 @@ async def on_member_remove(member):
         embed.title = f'Adeus! {member.display_name}'
         embed.set_footer(text=f'ID do usuário: {member.id}')
         await channel.send(embed=embed)
+
+# Função de Clique da Troca
+
+
+@bot.event
+async def on_button_click(interaction):
+    if interaction.component.custom_id == "iniciar_troca":
+        # Chamada da função de troca
+        await troca(interaction)
 
 
 # Função de Limpar o chat.
@@ -233,6 +246,16 @@ async def help(ctx):
 
                 **%troca** - __Comando de Troca__.
                 -- Este comando inicia uma troca com a pessoa que você mencionar, cuidado a troca tem tempo limite!
+
+                **%criarcanaltrocas** - __Comando para criar o canal de Trocas__.
+                O Comando cria o canal de trocas para utilizar com o comando %troca.
+                Este canal é mais utilizado para servidores de Minecraft, mas, pode ser utilizado para outros propósitos.
+                *Este comando só pode ser utilizado por cargos que tem Administração e o Dono.*
+
+                **%criarcanalmembros** - __Comando para criar o canal de Membros__.
+                O Comando cria o canal de trocas para utilizar com o comando %troca.
+                O canal criado contabiliza a quantidade de membros do servidor.
+                *Este comando só pode ser utilizado por cargos que tem Administração e o Dono.*
                 ''',
             )
             embed.title = ':two: __**%HELP - Comandos!**__'
@@ -355,30 +378,46 @@ async def help(ctx):
 # Comando para criar o canal de notificações de trocas
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def criarcanal(ctx):
+async def criarcanaltrocas(ctx):
     guild = ctx.guild
-    channel = await create_trade_notifications_channel(guild, bot)
-
+    channel = await verifica_canal_trade(guild)
     if channel:
         await ctx.send(f"O canal de notificações de trocas foi criado com sucesso: {channel.mention}")
     else:
-        await ctx.send("Não foi possível criar o canal de notificações de trocas.")
+        await ctx.send("Não foi possível criar o canal de notificações de trocas ou o canal já existe.")
+
+# Comando para criar o canal de notificações de trocas
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def criarcanalmembros(ctx):
+    guild = ctx.guild
+    channel = await verifica_canal_membros(guild)
+    if channel:
+        await ctx.send(f"O canal de Membros foi criado com sucesso: {channel.mention}")
+    else:
+        await ctx.send("Não foi possível criar o canal de Membros ou o canal já existe.")
 
 
 # Função de Troca do Servidor
 @bot.command()
 async def troca(ctx):
-    # Verificar se o canal de notificações de trocas existe e criar se necessário
-    trade_channel = await create_trade_notifications_channel(ctx.guild, bot)
+    await ctx.message.delete()
+    # Verificar se o canal de notificações de trocas existe
+    trade_channel = await get_trade_notifications_channel(ctx.guild)
     if not trade_channel:
-        await ctx.send("O canal de notificações de trocas não está disponível.")
+        message = await ctx.send("O canal de notificações de trocas não está disponível ou não existe.")
+        await asyncio.sleep(3)
+        await message.delete()
         return
 
+    # Criar um canal temporário exclusivo para a pessoa que iniciou a troca
+    trade_temp_channel = await ctx.author.create_dm()
+
     # Perguntar com quem a pessoa deseja trocar
-    await ctx.send("Com quem você deseja trocar? Mencione a pessoa ou digite o nome.")
+    await trade_temp_channel.send("Com quem você deseja trocar? Mencione a pessoa ou digite o nome.")
 
     def check(message):
-        return message.author == ctx.author and message.channel == ctx.channel
+        return message.author == ctx.author and message.channel == trade_temp_channel
 
     try:
         user2_message = await bot.wait_for('message', check=check, timeout=60.0)
@@ -389,54 +428,54 @@ async def troca(ctx):
             user2 = discord.utils.get(
                 ctx.guild.members, name=user2_message.content)
         if not user2:
-            await ctx.send("Não foi possível encontrar a pessoa mencionada. Por favor, tente novamente.")
+            await trade_temp_channel.send("Não foi possível encontrar a pessoa mencionada. Por favor, tente novamente.")
             return
     except asyncio.TimeoutError:
-        await ctx.send("Tempo limite excedido. Por favor, tente novamente.")
+        await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
         return
 
     # Perguntar sobre o item oferecido e a quantidade
-    await ctx.send("Qual item você está oferecendo?")
+    await trade_temp_channel.send("Qual item você está oferecendo?")
 
     try:
         user1_item_message = await bot.wait_for('message', check=check, timeout=60.0)
         user1_item = user1_item_message.content
     except asyncio.TimeoutError:
-        await ctx.send("Tempo limite excedido. Por favor, tente novamente.")
+        await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
         return
 
-    await ctx.send("Qual é a quantidade desse item?")
+    await trade_temp_channel.send("Qual é a quantidade desse item?")
 
     try:
         user1_quantity_message = await bot.wait_for('message', check=check, timeout=60.0)
         user1_quantity = int(user1_quantity_message.content)
     except asyncio.TimeoutError:
-        await ctx.send("Tempo limite excedido. Por favor, tente novamente.")
+        await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
         return
     except ValueError:
-        await ctx.send("A quantidade deve ser um número inteiro. Por favor, tente novamente.")
+        await trade_temp_channel.send("A quantidade deve ser um número inteiro. Por favor, tente novamente.")
         return
 
     # Perguntar sobre o item desejado e a quantidade
-    await ctx.send(f"Qual item você deseja de {user2.mention}?")
+    await trade_temp_channel.send(f"Qual item você deseja de {user2.mention}?")
 
     try:
         user2_item_message = await bot.wait_for('message', check=check, timeout=60.0)
         user2_item = user2_item_message.content
     except asyncio.TimeoutError:
-        await ctx.send("Tempo limite excedido. Por favor, tente novamente.")
+        await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
         return
 
-    await ctx.send(f"Qual é a quantidade desse item que você deseja de {user2.mention}?")
+    await trade_temp_channel.send(f"Qual é a quantidade desse item que você deseja de {user2.mention}?")
 
     try:
         user2_quantity_message = await bot.wait_for('message', check=check, timeout=60.0)
         user2_quantity = int(user2_quantity_message.content)
     except asyncio.TimeoutError:
-        await ctx.send("Tempo limite excedido. Por favor, tente novamente.")
+        await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
         return
     except ValueError:
-        await ctx.send("A quantidade deve ser um número inteiro. Por favor, tente novamente.")
+        await trade_temp_channel.send("A quantidade deve ser um número inteiro. Por favor, tente novamente.")
         return
 
     # Armazenar as informações da troca
@@ -518,9 +557,50 @@ async def troca(ctx):
         reaction, _ = await bot.wait_for('reaction_add', timeout=60.0, check=check_reaction)
         if str(reaction.emoji) == '✅':
             await trade_channel.send(f"{user2.mention} aceitou a troca! A troca foi concluída.")
+            await trade_notification_message.delete()
+            trade_completed_embed = discord.Embed(
+                title="Troca Concluída",
+                description="A troca foi concluída com sucesso:",
+                color=discord.Color.green()
+            )
+            trade_completed_embed.add_field(
+                name="Usuário 1", value=ctx.author.mention, inline=False)
+            trade_completed_embed.add_field(
+                name="Usuário 2", value=user2.mention, inline=False)
+            trade_completed_embed.add_field(
+                name="Item oferecido por Usuário 1", value=user1_item, inline=False)
+            trade_completed_embed.add_field(
+                name="Quantidade oferecida por Usuário 1", value=user1_quantity, inline=False)
+            trade_completed_embed.add_field(
+                name="Item oferecido por Usuário 2", value=user2_item, inline=False)
+            trade_completed_embed.add_field(
+                name="Quantidade oferecida por Usuário 2", value=user2_quantity, inline=False)
+
+            await trade_channel.send(embed=trade_completed_embed)
         else:
             await trade_channel.send(f"{user2.mention} cancelou a troca. A troca foi cancelada.")
+            await trade_notification_message.delete()
+            trade_canceled_embed = discord.Embed(
+                title="Troca Cancelada",
+                description="A troca foi cancelada:",
+                color=discord.Color.red()
+            )
+            trade_canceled_embed.add_field(
+                name="Usuário 1", value=ctx.author.mention, inline=False)
+            trade_canceled_embed.add_field(
+                name="Usuário 2", value=user2.mention, inline=False)
+            trade_canceled_embed.add_field(
+                name="Item oferecido por Usuário 1", value=user1_item, inline=False)
+            trade_canceled_embed.add_field(
+                name="Quantidade oferecida por Usuário 1", value=user1_quantity, inline=False)
+            trade_canceled_embed.add_field(
+                name="Item oferecido por Usuário 2", value=user2_item, inline=False)
+            trade_canceled_embed.add_field(
+                name="Quantidade oferecida por Usuário 2", value=user2_quantity, inline=False)
+
+            await trade_channel.send(embed=trade_canceled_embed)
     except asyncio.TimeoutError:
         await trade_channel.send("Tempo limite excedido. A troca foi cancelada.")
+
 
 bot.run(token)

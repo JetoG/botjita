@@ -104,69 +104,33 @@ async def save_trade_notification_channels():
         json.dump(trade_notification_channels, file)
 
 
+# Função JSON que pega o canal de trade.
+async def get_trade_notifications_channel(guild):
+    await load_trade_notification_channels()
+
+    return trade_notification_channels.get(str(guild.id))
+
+
 # Função para criar o canal de notificações de trocas
-async def create_trade_notifications_channel(guild, bot):
-    # Verifica se o canal já existe nas configurações
-    settings = await load_trade_notification_channels()
-    channel_id = settings.get('trade_notifications_channel_id')
+async def create_trade_notifications_channel(guild):
+    global trade_notification_channels
 
-    if channel_id:
-        # Verifica se o canal existe no servidor
-        channel = guild.get_channel(channel_id)
-        if channel:
-            return channel
+    channel = await guild.create_text_channel('🏦┃trocas-do-server', position=0)
+    trade_notification_channels[str(guild.id)] = str(channel.id)
+    await save_trade_notification_channels()
 
-        # Canal não existe mais, perguntar ao usuário se deseja recriá-lo
-        owner_id = settings.get('trade_notifications_channel_owner_id')
-        if owner_id:
-            owner = guild.get_member(owner_id)
-            if owner:
-                try:
-                    message = await owner.send("O canal de notificações de trocas foi deletado. Deseja criar um novo canal?")
-                    await message.add_reaction('✅')  # Reação de V (checkmark)
-                    await message.add_reaction('❌')  # Reação de X (crossmark)
+    embed = discord.Embed(
+        title="Trocas",
+        description="Clique no botão para iniciar uma troca",
+        color=discord.Color.dark_green()
+    )
 
-                    def check(reaction, user):
-                        return user == owner and str(reaction.emoji) in ['✅', '❌']
+    button = discord.Button(
+        style=discord.ButtonStyle.primary,
+        label="Iniciar Troca",
+        custom_id="iniciar_troca"
+    )
 
-                    reaction, _ = await bot.wait_for('reaction_add', timeout=60, check=check)
-                    if str(reaction.emoji) == '✅':
-                        del settings['trade_notifications_channel_id']
-                        del settings['trade_notifications_channel_owner_id']
-                        await save_trade_notification_channels()
-                        return await create_trade_notifications_channel(guild, bot)
-                    else:
-                        await owner.send("Entendido. Se precisar criar o canal novamente, utilize o comando %criarcanal.")
-                        return None
-                except asyncio.TimeoutError:
-                    await owner.send("Tempo limite excedido. Se precisar criar o canal novamente, utilize o comando %criarcanal.")
-                    return None
+    await channel.send(embed=embed, components=[button])
 
-    # Canal não está definido, perguntar ao usuário se deseja criar um novo canal
-    owner = guild.owner
-    if owner:
-        try:
-            message = await owner.send("O canal de notificações de trocas não está definido. Deseja criar um novo canal?")
-            await message.add_reaction('✅')  # Reação de V (checkmark)
-            await message.add_reaction('❌')  # Reação de X (crossmark)
-
-            def check(reaction, user):
-                return user == owner and str(reaction.emoji) in ['✅', '❌']
-
-            reaction, _ = await bot.wait_for('reaction_add', timeout=60, check=check)
-            if str(reaction.emoji) == '✅':
-                # Defina a categoria desejada para o canal de notificações
-                category = guild.categories[0]
-                channel = await category.create_text_channel('trocas-notificacoes')
-                settings['trade_notifications_channel_id'] = channel.id
-                settings['trade_notifications_channel_owner_id'] = owner.id
-                await save_trade_notification_channels()
-                return channel
-            else:
-                await owner.send("Entendido. Caso deseje criar o canal posteriormente, utilize o comando %criarcanal.")
-                return None
-        except asyncio.TimeoutError:
-            await owner.send("Tempo limite excedido. Caso deseje criar o canal posteriormente, utilize o comando %criarcanal.")
-            return None
-
-    return None
+    return channel
