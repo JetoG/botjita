@@ -9,7 +9,7 @@ from func_repetiveis import verifica_canal_membros_on_ready, verifica_canal_memb
 # Configuraçãoes e Importação JSON dos Canais.
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='%', intents=intents)
-token = 'MTEwNzgxODA5ODkwMTQwMTYwMA.GMqEng.8bRhhuFB2wvqBXIMXp3ZBD06v1sebfmYD_04WY'
+token = ''
 
 
 # Dicionário para armazenar os canais de contagem (ID do servidor e ID do canal)
