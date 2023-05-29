@@ -1,6 +1,7 @@
 import json
 import discord
 import asyncio
+from discord.ext import commands
 
 channel_member_file = 'botjitacode/member_count_channels.json'
 
@@ -74,6 +75,21 @@ async def update_member_count(channel):
             await update_member_count(channel)
         else:
             raise e
+        
+async def update_json_member_channel(channel):
+    # Carregar as configurações do arquivo JSON
+    await load_member_count_channels()
+    
+    # Verifique se o canal excluído é o canal de membros
+    guild_id = str(channel.guild.id)
+    channel_id = str(channel.id)
+       
+    if channel_id == member_count_channels.get(guild_id, ''):
+        # Remova a entrada correspondente do arquivo JSON
+        member_count_channels.pop(guild_id, None)
+    
+    # Salvar as configurações no arquivo JSON
+    await save_member_count_channels()
 
 
 channel_trade_file = 'botjitacode/trade_notification_channels.json'
@@ -106,31 +122,56 @@ async def save_trade_notification_channels():
 
 # Função JSON que pega o canal de trade.
 async def get_trade_notifications_channel(guild):
-    await load_trade_notification_channels()
-
+    trade_notification_channels = await load_trade_notification_channels()
     return trade_notification_channels.get(str(guild.id))
 
-
 # Função para criar o canal de notificações de trocas
-async def create_trade_notifications_channel(guild):
+async def create_trade_notifications_channel(guild, bot):
     global trade_notification_channels
 
     channel = await guild.create_text_channel('🏦┃trocas-do-server', position=0)
     trade_notification_channels[str(guild.id)] = str(channel.id)
     await save_trade_notification_channels()
 
+    await send_trade_embed(channel, bot)
+
+    return channel
+
+class MyView(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__()
+        self.bot = bot
+
+    @discord.ui.button(label="Trocar", style=discord.ButtonStyle.primary, emoji="😎", custom_id="iniciar_troca")
+    async def button_callback(self, interaction, button):
+        if button.custom_id == "iniciar_troca":
+            ctx = interaction.channel.guild.get_member(interaction.user.id)
+            await interaction.message.delete()
+
+async def send_trade_embed(channel, bot):
     embed = discord.Embed(
         title="Trocas",
         description="Clique no botão para iniciar uma troca",
         color=discord.Color.dark_green()
     )
 
-    button = discord.Button(
-        style=discord.ButtonStyle.primary,
-        label="Iniciar Troca",
-        custom_id="iniciar_troca"
-    )
+    view = MyView(bot)
 
-    await channel.send(embed=embed, components=[button])
+    await channel.send(embed=embed, view=view)
 
-    return channel
+
+async def update_json_trade_channel(channel):
+    # Carregar as configurações do arquivo JSON
+    await load_trade_notification_channels()
+    
+    # Verifique se o canal excluído é o canal de membros
+    guild_id = str(channel.guild.id)
+    channel_id = str(channel.id)
+    
+    if channel_id == member_count_channels.get(guild_id, ''):
+        # Remova a entrada correspondente do arquivo JSON
+        trade_notification_channels.pop(guild_id, None)
+    
+    # Salvar as configurações no arquivo JSON
+    await save_trade_notification_channels()
+
