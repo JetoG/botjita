@@ -25,7 +25,7 @@ class InicarComandos(commands.Cog):
                 Essa ação é __irreversível__.''',
                 color=discord.Color.from_rgb(128, 128, 128)
             )
-            embed.title = ':wastebasket: __**%CLEAN - Apagador de Mensagens!**__'
+            embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
             embed.set_footer(text=f"{ctx.author.name}")
         else:
             embed = discord.Embed(
@@ -34,7 +34,7 @@ class InicarComandos(commands.Cog):
                 Essa ação é __irreversível__.''',
                 color=discord.Color.from_rgb(128, 128, 128)
             )
-            embed.title = ':wastebasket: __**%CLEAN - Apagador de Mensagens!**__'
+            embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
             embed.set_footer(text=f"{ctx.author.name}")
 
         confirmation_message = await ctx.send(embed=embed)
@@ -132,7 +132,7 @@ class InicarComandos(commands.Cog):
                 ''',
             color=discord.Color.dark_blue()
         )
-        embed.title = ':question: __**%HELP - Em que posso Ajudá-lo?!**__'
+        embed.title = ':question: __**!!HELP - Em que posso Ajudá-lo?!**__'
         embed.set_footer(text=f"Comando executado por {ctx.author.name}")
         mc = await ctx.channel.send(embed=embed)
         await mc.add_reaction('1️⃣')  # Reação para Comandos
@@ -149,28 +149,28 @@ class InicarComandos(commands.Cog):
                 await mc.delete()
                 embed = discord.Embed(
                     description='''
-                    **%help** - __Comando de Ajuda__.
+                    **!!help** - __Comando de Ajuda__.
                     -- Você esta utilizando ele agora :laughing::satisfied:
                     
-                    **%clean** - __Comando para limpar o chat__.
+                    **!!clean** - __Comando para limpar o chat__.
                     -- Se digitiar um número ele apagará a quantidade de mensagens especificadas.
                     *Este comando só pode ser utilizado por cargos que tem Administração e o Dono.*
 
-                    **%troca** - __Comando de Troca__.
+                    **!!troca** - __Comando de Troca__.
                     -- Este comando inicia uma troca com a pessoa que você mencionar, cuidado a troca tem tempo limite!
 
-                    **%criarcanaltrocas** - __Comando para criar o canal de Trocas__.
-                    O Comando cria o canal de trocas para utilizar com o comando %troca.
+                    **!!criarcanaltrocas** - __Comando para criar o canal de Trocas__.
+                    O Comando cria o canal de trocas para utilizar com o comando !!troca.
                     Este canal é mais utilizado para servidores de Minecraft, mas, pode ser utilizado para outros propósitos.
                     *Este comando só pode ser utilizado por cargos que tem Administração e o Dono.*
 
-                    **%criarcanalmembros** - __Comando para criar o canal de Membros__.
-                    O Comando cria o canal de trocas para utilizar com o comando %troca.
+                    **!!criarcanalmembros** - __Comando para criar o canal de Membros__.
+                    O Comando cria o canal de trocas para utilizar com o comando !!troca.
                     O canal criado contabiliza a quantidade de membros do servidor.
                     *Este comando só pode ser utilizado por cargos que tem Administração e o Dono.*
                     ''',
                 )
-                embed.title = ':two: __**%HELP - Comandos!**__'
+                embed.title = ':two: __**!!HELP - Comandos!**__'
                 mc = await ctx.channel.send(embed=embed)
                 await mc.add_reaction('✅')  # Reação para fechar o comando
                 await mc.add_reaction('⬅️')  # Reação para voltar
@@ -203,7 +203,7 @@ class InicarComandos(commands.Cog):
                     ''',
                     color=0x0000FF
                 )
-                embed.title = ':two: __**%HELP - Quem é Jeto?**__'
+                embed.title = ':two: __**!!HELP - Quem é Jeto?**__'
                 mc = await ctx.channel.send(embed=embed)
                 await mc.add_reaction('✅')  # Reação para fechar o comando
                 await mc.add_reaction('⬅️')  # Reação para voltar
@@ -239,7 +239,7 @@ class InicarComandos(commands.Cog):
                     ''',
                     color=0xFF0000
                 )
-                embed.title = ':three: __**%HELP - Quem é Luxxas?**__'
+                embed.title = ':three: __**!!HELP - Quem é Luxxas?**__'
                 mc = await ctx.channel.send(embed=embed)
                 img = await ctx.send('https://prnt.sc/3TXFLmqmLpi6')
                 await mc.add_reaction('✅')  # Reação para fechar o comando
@@ -295,7 +295,7 @@ class InicarComandos(commands.Cog):
         guild = ctx.guild
         channel = await verifica_canal_trade(guild, self.bot)
         if channel:
-            certo = await ctx.send(f"O canal de notificações de trocas foi criado com sucesso: {channel.mention}")
+            certo = await ctx.send(f"O canal de notificações de trocas foi criado com sucesso ou ele já existe!: {channel.mention}")
             await asyncio.sleep(3)
             await certo.delete()
         else:
@@ -307,12 +307,17 @@ class InicarComandos(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def criarcanalmembros(self, ctx):
+        await ctx.message.delete()
         guild = ctx.guild
         channel = await verifica_canal_membros(guild)
         if channel:
-            await ctx.send(f"O canal de Membros foi criado com sucesso: {channel.mention}")
+            suc = await ctx.send(f"O canal de Membros foi criado com sucesso ou ele já existe!: {channel.mention}")
+            await asyncio.sleep(3)
+            await suc.delete()
         else:
-            await ctx.send("Não foi possível criar o canal de Membros ou o canal já existe.")
+            err = await ctx.send("Aconteceu algum erro ao criar o canal de Membros")
+            await asyncio.sleep(3)
+            await err.delete()
 
 
     # Função de Troca do Servidor

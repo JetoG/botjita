@@ -6,8 +6,6 @@ from discord.ext import commands
 channel_member_file = 'botjitacode/member_count_channels.json'
 
 # Função JSON que carrega a lista de canais dos servidor que contem contagem de membros.
-
-
 async def load_member_count_channels():
     global member_count_channels
 
@@ -22,8 +20,6 @@ async def load_member_count_channels():
         member_count_channels = {}
 
 # Função JSON que salva o canal de contagem no arquivo.
-
-
 async def save_member_count_channels():
     global member_count_channels
 
@@ -31,16 +27,12 @@ async def save_member_count_channels():
         json.dump(member_count_channels, file)
 
 # Função JSON que pega o canal de contagem.
-
-
 async def get_member_count_channel(guild):
     global member_count_channels
 
     return member_count_channels.get(str(guild.id))
 
 # Função que cria o canal de contagem de membros.
-
-
 async def create_member_count_channel(guild):
     global member_count_channels
 
@@ -57,11 +49,12 @@ async def create_member_count_channel(guild):
     member_count_channels[str(guild.id)] = str(channel.id)
     await save_member_count_channels()
 
+    # Carregar as novas configurações do arquivo JSON
+    await load_member_count_channels()
+
     return channel
 
 # Função que atualiza a contagem de membros.
-
-
 async def update_member_count(channel):
     member_count = channel.guild.member_count
     try:
@@ -76,20 +69,23 @@ async def update_member_count(channel):
         else:
             raise e
         
-async def update_json_member_channel(channel):
+async def update_json_member_channel(guild):
     # Carregar as configurações do arquivo JSON
     await load_member_count_channels()
     
     # Verifique se o canal excluído é o canal de membros
-    guild_id = str(channel.guild.id)
-    channel_id = str(channel.id)
-       
-    if channel_id == member_count_channels.get(guild_id, ''):
-        # Remova a entrada correspondente do arquivo JSON
-        member_count_channels.pop(guild_id, None)
+    guild_id = str(guild.id)
+    channel_id = member_count_channels.get(guild_id)
+    channel = guild.get_channel(int(channel_id)) if channel_id else None
+
+    if not channel:
+        # Canal não existe mais, remova a entrada correspondente do arquivo JSON
+        member_count_channels.pop(guild_id, None)   
     
     # Salvar as configurações no arquivo JSON
     await save_member_count_channels()
+    # Carregar as novas configurações do arquivo JSON
+    await load_member_count_channels()
 
 
 channel_trade_file = 'botjitacode/trade_notification_channels.json'
@@ -160,18 +156,22 @@ async def send_trade_embed(channel, bot):
     await channel.send(embed=embed, view=view)
 
 
-async def update_json_trade_channel(channel):
+async def update_json_trade_channel(guild):
     # Carregar as configurações do arquivo JSON
     await load_trade_notification_channels()
     
-    # Verifique se o canal excluído é o canal de membros
-    guild_id = str(channel.guild.id)
-    channel_id = str(channel.id)
+    # Verifique se o canal excluído ainda existe no servidor
+    guild_id = str(guild.id)
+    channel_id = trade_notification_channels.get(guild_id)
+    channel = guild.get_channel(int(channel_id)) if channel_id else None
     
-    if channel_id == member_count_channels.get(guild_id, ''):
-        # Remova a entrada correspondente do arquivo JSON
+    if not channel:
+        # Canal não existe mais, remova a entrada correspondente do arquivo JSON
         trade_notification_channels.pop(guild_id, None)
     
     # Salvar as configurações no arquivo JSON
     await save_trade_notification_channels()
+    # Carregar as novas configurações do arquivo JSON
+    await load_trade_notification_channels()
+
 
