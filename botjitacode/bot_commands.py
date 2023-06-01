@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import os
+from typing import Optional
 
 from discord.ext import commands
 from bot_json import get_trade_notifications_channel, load_trade_notification_channels
@@ -15,27 +16,48 @@ class InicarComandos(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     @commands.bot_has_permissions(manage_messages=True)
-    async def clean(self, ctx, limit: int = None):
+    async def clean(self, ctx, target: Optional[discord.Member], limit: Optional[int] = None):
         channel = ctx.channel
         await ctx.message.delete()
-        if limit is None:
-            embed = discord.Embed(
-                description='''
-                Você realmente deseja deletar **TODAS** as mensagens deste canal? 
-                Essa ação é __irreversível__.''',
-                color=discord.Color.from_rgb(128, 128, 128)
-            )
-            embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
-            embed.set_footer(text=f"{ctx.author.name}")
+
+        if target is None:
+            if limit is None:
+                embed = discord.Embed(
+                    description='''
+                    Você realmente deseja deletar **TODAS** as mensagens deste canal? 
+                    Essa ação é __irreversível__.''',
+                    color=discord.Color.from_rgb(128, 128, 128)
+                )
+                embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
+                embed.set_footer(text=f"{ctx.author.name}")
+            else:
+                embed = discord.Embed(
+                    description=f'''
+                    Você realmente deseja deletar as últimas **{limit}** mensagens deste canal? 
+                    Essa ação é __irreversível__.''',
+                    color=discord.Color.from_rgb(128, 128, 128)
+                )
+                embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
+                embed.set_footer(text=f"{ctx.author.name}")
         else:
-            embed = discord.Embed(
-                description=f'''
-                Você realmente deseja deletar as últimas **{limit}** mensagens deste canal? 
-                Essa ação é __irreversível__.''',
-                color=discord.Color.from_rgb(128, 128, 128)
-            )
-            embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
-            embed.set_footer(text=f"{ctx.author.name}")
+            if limit is None:
+                embed = discord.Embed(
+                    description=f'''
+                    Você realmente deseja deletar **TODAS** as mensagens de {target.mention} neste canal?
+                    Essa ação é __irreversível__.''',
+                    color=discord.Color.from_rgb(128, 128, 128)
+                )
+                embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
+                embed.set_footer(text=f"{ctx.author.name}")
+            else:
+                embed = discord.Embed(
+                    description=f'''
+                    Você realmente deseja deletar as últimas **{limit}** mensagens de {target.mention} neste canal?  
+                    Essa ação é __irreversível__.''',
+                    color=discord.Color.from_rgb(128, 128, 128)
+                )
+                embed.title = ':wastebasket: __**!!CLEAN - Apagador de Mensagens!**__'
+                embed.set_footer(text=f"{ctx.author.name}")
 
         confirmation_message = await ctx.send(embed=embed)
         await confirmation_message.add_reaction('✅')  # Reação para confirmar
@@ -52,16 +74,20 @@ class InicarComandos(commands.Cog):
                     description='Mandando Mensagens para o Além... :milky_way:',
                     color=discord.Color.purple()
                 )
-                await ctx.send(embed=embed)
+                delete_message = await ctx.send(embed=embed)
                 await asyncio.sleep(1.5)
+                await delete_message.delete()
 
-                if limit is None:
-                    messages = await channel.purge(limit=None)
+                if target is None:
+                    messages = await channel.purge(limit=limit if limit else None)
                 else:
-                    messages = await channel.purge(limit=limit + 1)
-
+                    def check_message_author(message):
+                        return message.author == target
+                    messages = await channel.purge(limit=limit if limit else None, check=check_message_author)
+                
+                deleted_messages = len(messages) # Subtraímos 1 para excluir o próprio comando
                 embed = discord.Embed(
-                    description=f"**{len(messages) - 1}** Mensagens viraram **POEIRA CÓSMICA**! :comet:",
+                    description=f"**{deleted_messages}** Mensagens viraram **POEIRA CÓSMICA**! :comet:",
                     color=discord.Color.from_rgb(93, 173, 236)
                 )
                 embed.set_footer(text='Bom Trabalho!')
