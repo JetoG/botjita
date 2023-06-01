@@ -26,7 +26,9 @@ bot.remove_command("help")
 
 @bot.event
 async def on_ready():
-    await bot.add_cog(InicarComandos(bot))
+    # Verifique se o cog 'InicarComandos' já foi carregado antes de adicioná-lo
+    if not bot.get_cog('InicarComandos'):
+        await bot.add_cog(InicarComandos(bot))
     await load_trade_notification_channels()
     await load_member_count_channels()
     for guild in bot.guilds:
@@ -229,10 +231,16 @@ async def on_disconnect():
         channel = bot.get_channel(channel_id)
         
         if channel:
-            await channel.send(f'{mention} Bot desconectado, tentando reconectar.')
+            embed = discord.Embed(
+                title="Bot Desconectado",
+                description="O bot foi desconectado e está tentando reconectar.",
+                color=discord.Color.orange()
+            )
+            await channel.send(content=mention, embed=embed)
         else:
             print(f'Canal de notificação não encontrado: {channel_id}')
 
     await reconnect_bot()
+
 
 bot.run(token)
