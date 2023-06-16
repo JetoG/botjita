@@ -1,15 +1,16 @@
+from bot_commands import InicarComandos
+from bot_repeatable import verifica_canal_membros_on_ready, verifica_canal_membros, verifica_canal_trade_on_ready, verifica_canal_trade
+from bot_json import load_member_count_channels, get_member_count_channel, update_member_count, update_json_member_channel, update_json_trade_channel, get_trade_notifications_channel, load_trade_notification_channels
+from discord.ext import commands
 from datetime import datetime
 import discord
 import asyncio
 import os
 import dotenv
 import traceback
+import subprocess
 
 dotenv.load_dotenv()
-from discord.ext import commands
-from bot_json import load_member_count_channels, get_member_count_channel, update_member_count, update_json_member_channel, update_json_trade_channel, get_trade_notifications_channel, load_trade_notification_channels
-from bot_repeatable import verifica_canal_membros_on_ready, verifica_canal_membros, verifica_canal_trade_on_ready, verifica_canal_trade
-from bot_commands import InicarComandos
 # Configuraçãoes e Importação JSON dos Canais.
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!!', intents=intents)
@@ -23,6 +24,7 @@ trade_notification_channels = {}
 
 bot.remove_command("help")
 # Função de quando o bot está online e pronto para uso.
+
 
 @bot.event
 async def on_ready():
@@ -119,25 +121,28 @@ async def on_error(event, *args, **kwargs):
         description=f"Ocorreu um erro durante o processamento de um evento: {event}",
         color=discord.Color.red()
     )
-    error_embed.add_field(name="Mensagem de Erro", value=error_message, inline=False)
+    error_embed.add_field(name="Mensagem de Erro",
+                          value=error_message, inline=False)
     error_embed.set_footer(text="Data do erro: " + str(datetime.now()))
-    
-    channel_id = 1112454746767360080 
+
+    channel_id = 1112454746767360080
     channel = bot.get_channel(channel_id)
-    
+
     if channel:
         error_msg = await channel.send(embed=error_embed)
-        await error_msg.add_reaction('✅')  # Adiciona a reação de erro corrigido
-        
+        # Adiciona a reação de erro corrigido
+        await error_msg.add_reaction('✅')
+
         def check(reaction, user):
             return (
                 reaction.message.id == error_msg.id
                 and str(reaction.emoji) == '✅'
                 and user.id == 261270488955879434  # Substitua pelo seu ID de usuário
             )
-        
+
         try:
-            reaction, _ = await bot.wait_for('reaction_add', check=check)  # Espera pela reação por tempo indeterminado
+            # Espera pela reação por tempo indeterminado
+            reaction, _ = await bot.wait_for('reaction_add', check=check)
         except asyncio.TimeoutError:
             pass
         else:
@@ -154,32 +159,36 @@ async def on_error(event, *args, **kwargs):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return  # Ignora mensagens de comando inválido
-    
+
     error_message = str(error)
     error_embed = discord.Embed(
         title="Erro",
         description=f"Ocorreu um erro durante o processamento do comando.",
         color=discord.Color.red()
     )
-    error_embed.add_field(name="Mensagem de Erro", value=error_message, inline=False)
+    error_embed.add_field(name="Mensagem de Erro",
+                          value=error_message, inline=False)
     error_embed.set_footer(text="Data do erro: " + str(datetime.now()))
-    
-    channel_id = 1112454746767360080  # ID do canal onde as mensagens de erro serão enviadas
+
+    # ID do canal onde as mensagens de erro serão enviadas
+    channel_id = 1112454746767360080
     channel = bot.get_channel(channel_id)
-    
+
     if channel:
         error_message = await channel.send(embed=error_embed)
-        await error_message.add_reaction('✅')  # Adiciona a reação de erro corrigido
-        
+        # Adiciona a reação de erro corrigido
+        await error_message.add_reaction('✅')
+
         def check(reaction, user):
             return (
                 reaction.message.id == error_message.id
                 and str(reaction.emoji) == '✅'
                 and user.id == 261270488955879434  # Substitua pelo seu ID de usuário
             )
-        
+
         try:
-            reaction, _ = await bot.wait_for('reaction_add', check=check)  # Espera pela reação por tempo indeterminado
+            # Espera pela reação por tempo indeterminado
+            reaction, _ = await bot.wait_for('reaction_add', check=check)
         except asyncio.TimeoutError:
             pass
         else:
@@ -193,54 +202,94 @@ async def on_command_error(ctx, error):
 
     raise error  # Re-levanta o erro para que ele seja tratado pelo tratador padrão de erros do bot
 
-
-
-async def reconnect_bot():
-    print('Bot desconectado, tentando reconectar...')
-    attempts = 0
-    max_attempts = 3
-
-    while attempts < max_attempts:
-        try:
-            await bot.start(token)
-            break
-        except discord.ConnectionClosed:
-            print('Conexão fechada.')
-            attempts += 1
-            print(f'Tentativa de reconexão: {attempts}/{max_attempts}')
-            await asyncio.sleep(5)
-
-    if attempts == max_attempts:
-        # Código para enviar uma notificação em um canal específico
-        channel_id = 1112454933644595280
-        channel = bot.get_channel(channel_id)
-        if channel:
-            await channel.send('O bot falhou em se reconectar após várias tentativas.')
-        else:
-            print(f'Canal de notificação não encontrado: {channel_id}')
+reconnecting = False
 
 
 @bot.event
 async def on_disconnect():
+    global reconnecting
+
+    if reconnecting:
+        return  # Ignora o evento se já estiver em processo de reconexão
+
     user_id = 261270488955879434
     user = bot.get_user(user_id)
-    
+
     if user:
         mention = user.mention
         channel_id = 1112454933644595280
         channel = bot.get_channel(channel_id)
-        
+
         if channel:
             embed = discord.Embed(
                 title="Bot Desconectado",
                 description="O bot foi desconectado e está tentando reconectar.",
                 color=discord.Color.orange()
             )
-            await channel.send(content=mention, embed=embed)
+            try:
+                # Verifica se a sessão está fechada e reinicia, se necessário
+                if bot.is_closed:
+                    await bot.start(token)
+
+                await channel.send(content=mention, embed=embed)
+            except Exception as e:
+                print(f"Erro ao enviar mensagem de desconexão: {e}")
         else:
             print(f'Canal de notificação não encontrado: {channel_id}')
 
+    # Atualiza a variável de controle para indicar que o bot está em processo de reconexão
+    reconnecting = True
     await reconnect_bot()
+
+
+async def reconnect_bot():
+    global reconnecting
+
+    print('Bot desconectado, tentando reconectar...')
+    max_reconnect_attempts = 3
+    reconnect_delay = 3  # segundos
+    attempts = 0
+
+    while attempts < max_reconnect_attempts:
+        if bot.is_closed and bot.is_ready():
+            try:
+                await bot.start(token)
+                break
+            except discord.ConnectionClosed:
+                print('Conexão fechada.')
+        else:
+            print('Bot já conectado.')
+
+        attempts += 1
+        print(f'Tentativa de reconexão: {attempts}/{max_reconnect_attempts}')
+        await asyncio.sleep(reconnect_delay)
+
+    if attempts == max_reconnect_attempts:
+        channel_id = 1112454933644595280  # ID do canal para enviar a notificação
+        channel = bot.get_channel(channel_id)
+
+        if channel:
+            embed = discord.Embed(
+                title="Falha na Reconexão",
+                description="O bot não conseguiu se reconectar após várias tentativas.",
+                color=discord.Color.red()
+            )
+            try:
+                # Verifica se a sessão está fechada e reinicia, se necessário
+                if bot.is_closed:
+                    await bot.start(token)
+
+                await channel.send(embed=embed)
+            except Exception as e:
+                print(f"Erro ao enviar mensagem de falha na reconexão: {e}")
+        else:
+            print(f'Canal de notificação não encontrado: {channel_id}')
+
+        await bot.close()
+        subprocess.run(['python3', 'botjitacode/bot_main.py'])
+
+    # Após a conclusão da reconexão, atualize a flag de reconexão
+    reconnecting = False
 
 
 bot.run(token)

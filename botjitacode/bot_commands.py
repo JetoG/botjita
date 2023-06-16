@@ -357,12 +357,27 @@ class InicarComandos(commands.Cog):
             await asyncio.sleep(3)
             await message.delete()
             return
-
+        
+        overwrites = {
+                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                ctx.author: discord.PermissionOverwrite(read_messages=True)
+            }
+        
         # Criar um canal temporário exclusivo para a pessoa que iniciou a troca
-        trade_temp_channel = await ctx.guild.create_text_channel('troca-temp')
+        trade_temp_channel = await ctx.guild.create_text_channel('troca-temp', overwrites=overwrites)
 
+        msgt = await ctx.send(f"{ctx.author.mention}, seu canal de trocas privado foi criado em {trade_temp_channel.mention}."
+                   " Acesse o canal para continuar a sua troca.")
+        
+        # Verificar a categoria do canal de trocas
+        msg = await trade_temp_channel.send(f"{ctx.author.mention}, Faça sua troca!")
+                
         # Perguntar com quem a pessoa deseja trocar
         await trade_temp_channel.send("Com quem você deseja trocar? Mencione a pessoa ou digite o nome.")
+
+        await asyncio.sleep(3)
+        await msg.delete()
+        await msgt.delete()
 
         def check(message):
             return message.author == ctx.author and message.channel == trade_temp_channel
@@ -390,6 +405,7 @@ class InicarComandos(commands.Cog):
             user1_item = user1_item_message.content
         except asyncio.TimeoutError:
             await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
+            await trade_temp_channel.delete()
             return
 
         await trade_temp_channel.send("Qual é a quantidade desse item?")
@@ -467,6 +483,9 @@ class InicarComandos(commands.Cog):
             name="Quantidade", value=user2_quantity, inline=True)
 
         trade_notification_message = await trade_channel.send(embed=trade_channel_embed)
+        msgc = await trade_channel.send(f'{ctx.author.mention} - {user2.mention}')
+        await asyncio.sleep(3)
+        await msgc.delete()
 
         # Adicionar reações ao embed do canal de trocas
         # Reação de V (checkmark)
@@ -501,7 +520,7 @@ class InicarComandos(commands.Cog):
                     name="Quantidade", value=user2_quantity, inline=True)
 
                 await trade_channel.send(embed=trade_completed_embed)
-                msgc = await trade_channel.send(f'Caro {ctx.author.mention} a Troca aceita por {user2.mention}')
+                msgc = await trade_channel.send(f'Caro {ctx.author.mention} a Troca foi aceita por {user2.mention}')
                 await asyncio.sleep(5)
                 await msgc.delete()
             else:

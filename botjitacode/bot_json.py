@@ -133,27 +133,14 @@ async def create_trade_notifications_channel(guild, bot):
 
     return channel
 
-class MyView(discord.ui.View):
-    def __init__(self, bot):
-        super().__init__()
-        self.bot = bot
-
-    @discord.ui.button(label="Trocar", style=discord.ButtonStyle.primary, emoji="😎", custom_id="iniciar_troca")
-    async def button_callback(self, interaction, button):
-        if button.custom_id == "iniciar_troca":
-            ctx = interaction.channel.guild.get_member(interaction.user.id)
-            await interaction.message.delete()
-
 async def send_trade_embed(channel, bot):
     embed = discord.Embed(
         title="Trocas",
-        description="Clique no botão para iniciar uma troca",
+        description="Digite **_!!troca_** para iniciar uma troca",
         color=discord.Color.dark_green()
     )
 
-    view = MyView(bot)
-
-    await channel.send(embed=embed, view=view)
+    await channel.send(embed=embed)
 
 
 async def update_json_trade_channel(guild):
