@@ -109,8 +109,17 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_guild_channel_delete(channel):
-    await update_json_member_channel(channel)
-    await update_json_trade_channel(channel)
+    for guild in bot.guilds:
+        await verifica_canal_membros_on_ready(guild)
+        await verifica_canal_trade_on_ready(guild)
+        channel_id = await get_member_count_channel(guild)
+        if channel_id:
+            channel = guild.get_channel(int(channel_id))
+            await update_member_count(channel)
+
+        channel_id = await get_trade_notifications_channel(guild)
+        if channel_id:
+            channel = guild.get_channel(int(channel_id))
 
 
 @bot.event

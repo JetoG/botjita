@@ -23,7 +23,7 @@ async def verifica_canal_membros_on_ready(guild):
     channel = guild.get_channel(int(channel_id))
 
     if not channel:
-        print(f"AVISO: O canal de trocas configurado não existe no servidor {guild.name}.")
+        print(f"AVISO: O canal de membros configurado não existe no servidor {guild.name}.")
         await update_json_member_channel(guild)
         return None
     
@@ -45,7 +45,7 @@ async def verifica_canal_membros(guild):
 # Função para verificar o canal de trocas no evento on_ready
 async def verifica_canal_trade_on_ready(guild):
     channel_id = await get_trade_notifications_channel(guild)
-    
+
     if not channel_id:
         print(f"AVISO: O canal de trocas não existe no servidor {guild.name}.")
         await update_json_trade_channel(guild)

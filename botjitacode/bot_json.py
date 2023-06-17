@@ -44,13 +44,13 @@ async def create_member_count_channel(guild):
     }
 
     channel = await guild.create_text_channel(name='member-count', overwrites=overwrites, position=0)
-    await update_member_count(channel)
-
+    
     member_count_channels[str(guild.id)] = str(channel.id)
     await save_member_count_channels()
 
     # Carregar as novas configurações do arquivo JSON
     await load_member_count_channels()
+    await update_member_count(channel)
 
     return channel
 
@@ -128,7 +128,7 @@ async def create_trade_notifications_channel(guild, bot):
     channel = await guild.create_text_channel('🏦┃trocas-do-server', position=0)
     trade_notification_channels[str(guild.id)] = str(channel.id)
     await save_trade_notification_channels()
-
+    await load_trade_notification_channels()
     await send_trade_embed(channel, bot)
 
     return channel
@@ -148,13 +148,16 @@ async def update_json_trade_channel(guild):
     await load_trade_notification_channels()
     
     # Verifique se o canal excluído ainda existe no servidor
-    guild_id = str(guild.id)
-    channel_id = trade_notification_channels.get(guild_id)
+    canal_deletado = str(guild.id) #Pega o ID do canal excluido!
+    
+    #Tenta pegar o canal do ID de trade, com base no deletado
+    channel_id = trade_notification_channels.get(canal_deletado) 
+        
     channel = guild.get_channel(int(channel_id)) if channel_id else None
     
     if not channel:
         # Canal não existe mais, remova a entrada correspondente do arquivo JSON
-        trade_notification_channels.pop(guild_id, None)
+        trade_notification_channels.pop(canal_deletado, None)
     
     # Salvar as configurações no arquivo JSON
     await save_trade_notification_channels()
