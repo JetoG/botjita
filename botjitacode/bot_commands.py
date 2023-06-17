@@ -359,8 +359,8 @@ class InicarComandos(commands.Cog):
             return
         
         overwrites = {
-                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                ctx.author: discord.PermissionOverwrite(read_messages=True)
+                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False),
+                ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True)
             }
         
         # Criar um canal temporário exclusivo para a pessoa que iniciou a troca
@@ -373,7 +373,7 @@ class InicarComandos(commands.Cog):
         msg = await trade_temp_channel.send(f"{ctx.author.mention}, Faça sua troca!")
                 
         # Perguntar com quem a pessoa deseja trocar
-        await trade_temp_channel.send("Com quem você deseja trocar? Mencione a pessoa ou digite o nome.")
+        await trade_temp_channel.send("Com quem você deseja trocar? Mencione a pessoa ou digite o nome do @ (É o nome que fica em baixo do apelido no perfil).")
 
         await asyncio.sleep(3)
         await msg.delete()
@@ -382,52 +382,59 @@ class InicarComandos(commands.Cog):
         def check(message):
             return message.author == ctx.author and message.channel == trade_temp_channel
 
-        try:
-            user2_message = await self.bot.wait_for('message', check=check, timeout=60.0)
-            user2 = None
-            if user2_message.mentions:
-                user2 = user2_message.mentions[0]
-            else:
-                user2 = discord.utils.get(
-                    ctx.guild.members, name=user2_message.content)
-            if not user2:
-                await trade_temp_channel.send("Não foi possível encontrar a pessoa mencionada. Por favor, tente novamente.")
+        while True:
+            try:
+                user2_message = await self.bot.wait_for('message', check=check, timeout=600.0)
+                user2 = None
+                if user2_message.mentions:
+                    user2 = user2_message.mentions[0]
+                else:
+                    user2 = discord.utils.get(
+                        ctx.guild.members, name=user2_message.content)
+                if not user2:
+                    await trade_temp_channel.send("Não foi possível encontrar a pessoa mencionada. Por favor, digite novamente.")
+                    continue
+                break
+            except asyncio.TimeoutError:
+                await trade_temp_channel.send("Tempo limite excedido. Por favor, inicie a troca novamente!.")
+                await trade_temp_channel.delete()
                 return
-        except asyncio.TimeoutError:
-            await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
-            return
 
         # Perguntar sobre o item oferecido e a quantidade
         await trade_temp_channel.send("Qual item você está oferecendo?")
-
+        
         try:
-            user1_item_message = await self.bot.wait_for('message', check=check, timeout=60.0)
+            user1_item_message = await self.bot.wait_for('message', check=check, timeout=600.0)
             user1_item = user1_item_message.content
         except asyncio.TimeoutError:
-            await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
+            await trade_temp_channel.send("Tempo limite excedido. Por favor, inicie a troca novamente!")
             await trade_temp_channel.delete()
             return
 
         await trade_temp_channel.send("Qual é a quantidade desse item?")
 
-        try:
-            user1_quantity_message = await self.bot.wait_for('message', check=check, timeout=60.0)
-            user1_quantity = int(user1_quantity_message.content)
-        except asyncio.TimeoutError:
-            await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
-            return
-        except ValueError:
-            await trade_temp_channel.send("A quantidade deve ser um número inteiro. Por favor, tente novamente.")
-            return
+        while True:
+            try:
+                user1_quantity_message = await self.bot.wait_for('message', check=check, timeout=600.0)
+                user1_quantity = int(user1_quantity_message.content)
+            except asyncio.TimeoutError:
+                await trade_temp_channel.send("Tempo limite excedido. Por favor, inicie a troca novamente!")
+                await trade_temp_channel.delete()
+                return
+            except ValueError:
+                await trade_temp_channel.send("A quantidade deve ser um número inteiro. Por favor, digite novamente.")
+                continue
+            break
 
         # Perguntar sobre o item desejado e a quantidade
         await trade_temp_channel.send(f"Qual item você deseja de {user2.mention}?")
 
         try:
-            user2_item_message = await self.bot.wait_for('message', check=check, timeout=60.0)
+            user2_item_message = await self.bot.wait_for('message', check=check, timeout=600.0)
             user2_item = user2_item_message.content
         except asyncio.TimeoutError:
-            await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
+            await trade_temp_channel.send("Tempo limite excedido. Por favor, inicie a troca novamente.")
+            await trade_temp_channel.delete()
             return
 
         await trade_temp_channel.send(f"Qual é a quantidade desse item que você deseja de {user2.mention}?")
@@ -436,10 +443,11 @@ class InicarComandos(commands.Cog):
             user2_quantity_message = await self.bot.wait_for('message', check=check, timeout=60.0)
             user2_quantity = int(user2_quantity_message.content)
         except asyncio.TimeoutError:
-            await trade_temp_channel.send("Tempo limite excedido. Por favor, tente novamente.")
+            await trade_temp_channel.send("Tempo limite excedido. Por favor, inicie a troca novamente.")
+            await trade_temp_channel.delete()
             return
         except ValueError:
-            await trade_temp_channel.send("A quantidade deve ser um número inteiro. Por favor, tente novamente.")
+            await trade_temp_channel.send("A quantidade deve ser um número inteiro. Por favor, digite novamente.")
             return
 
         # Armazenar as informações da troca

@@ -204,7 +204,6 @@ async def on_command_error(ctx, error):
 
 reconnecting = False
 
-
 @bot.event
 async def on_disconnect():
     global reconnecting
@@ -241,55 +240,53 @@ async def on_disconnect():
     reconnecting = True
     await reconnect_bot()
 
-
 async def reconnect_bot():
-    global reconnecting
-
     print('Bot desconectado, tentando reconectar...')
-    max_reconnect_attempts = 3
-    reconnect_delay = 3  # segundos
     attempts = 0
+    max_attempts = 3
 
-    while attempts < max_reconnect_attempts:
-        if bot.is_closed and bot.is_ready():
-            try:
-                await bot.start(token)
-                break
-            except discord.ConnectionClosed:
-                print('Conexão fechada.')
-        else:
-            print('Bot já conectado.')
+    while attempts < max_attempts:
+        try:
+            await bot.login(bot.token)
+            await bot.connect()
+            break
+        except discord.ConnectionClosed:
+            print('Conexão fechada.')
+            attempts += 1
+            print(f'Tentativa de reconexão: {attempts}/{max_attempts}')
+            await asyncio.sleep(5)
 
-        attempts += 1
-        print(f'Tentativa de reconexão: {attempts}/{max_reconnect_attempts}')
-        await asyncio.sleep(reconnect_delay)
-
-    if attempts == max_reconnect_attempts:
-        channel_id = 1112454933644595280  # ID do canal para enviar a notificação
+    if attempts == max_attempts:
+        # Código para enviar uma notificação em um canal específico
+        channel_id = 1112454933644595280
         channel = bot.get_channel(channel_id)
-
         if channel:
-            embed = discord.Embed(
-                title="Falha na Reconexão",
-                description="O bot não conseguiu se reconectar após várias tentativas.",
-                color=discord.Color.red()
-            )
-            try:
-                # Verifica se a sessão está fechada e reinicia, se necessário
-                if bot.is_closed:
-                    await bot.start(token)
-
-                await channel.send(embed=embed)
-            except Exception as e:
-                print(f"Erro ao enviar mensagem de falha na reconexão: {e}")
+            await channel.send('O bot falhou em se reconectar após várias tentativas.')
         else:
             print(f'Canal de notificação não encontrado: {channel_id}')
 
-        await bot.close()
-        subprocess.run(['python3', 'botjitacode/bot_main.py'])
 
-    # Após a conclusão da reconexão, atualize a flag de reconexão
-    reconnecting = False
+@bot.event
+async def on_disconnect():
+    user_id = 261270488955879434
+    user = bot.get_user(user_id)
+    
+    if user:
+        mention = user.mention
+        channel_id = 1112454933644595280
+        channel = bot.get_channel(channel_id)
+        
+        if channel:
+            embed = discord.Embed(
+                title="Bot Desconectado",
+                description="O bot foi desconectado e está tentando reconectar.",
+                color=discord.Color.orange()
+            )
+            await channel.send(content=mention, embed=embed)
+        else:
+            print(f'Canal de notificação não encontrado: {channel_id}')
+
+    await reconnect_bot()
 
 
 bot.run(token)
